@@ -15,10 +15,8 @@ def register_write_tools(mcp):
         minimum_quantity: Annotated[int, Field(description="Minimum stock warning threshold")] = 5,
     ) -> dict | None:
         """Add a new product to inventory catalog"""
-        print(f"➕ [MCP Tool: add_product] Thêm sản phẩm mới: SKU='{sku}', Tên='{name}', ĐVT='{unit}', SL ban đầu={current_quantity}, Min={minimum_quantity}")
-        res = await db.add_product(sku, name, unit, current_quantity, minimum_quantity)
-        print(f"   ↳ Thêm sản phẩm thành công (id={res.get('id') if res else None})")
-        return res
+        print(f"[Tool] add_product: sku='{sku}', name='{name}', unit='{unit}', current_quantity={current_quantity}, minimum_quantity={minimum_quantity}")
+        return await db.add_product(sku, name, unit, current_quantity, minimum_quantity)
 
     @mcp.tool()
     async def receive_stock(
@@ -30,9 +28,8 @@ def register_write_tools(mcp):
         idempotency_key: Annotated[str, Field(description="Unique key to prevent duplicate calls")] = "",
     ) -> str:
         """Receive stock into inventory (increases current quantity and logs transaction)"""
-        print(f"📥 [MCP Tool: receive_stock] Thực thi Nhập kho: product_id='{product_id}', SL=+{quantity}, Đối tác='{partner}', HĐ='{reference_notes}'")
+        print(f"[Tool] receive_stock: product_id='{product_id}', quantity={quantity}, partner='{partner}', reference_notes='{reference_notes}'")
         await db.receive_stock(product_id, quantity, partner, reference_notes, note, idempotency_key)
-        print(f"   ↳ Nhập kho thành công cho product_id='{product_id}'")
         return "Stock received successfully"
 
     @mcp.tool()
@@ -45,7 +42,6 @@ def register_write_tools(mcp):
         idempotency_key: Annotated[str, Field(description="Unique key to prevent duplicate calls")] = "",
     ) -> str:
         """Issue stock out of inventory (checks availability, decreases quantity and logs transaction)"""
-        print(f"📤 [MCP Tool: issue_stock] Thực thi Xuất kho: product_id='{product_id}', SL=-{quantity}, Đối tác='{partner}', HĐ='{reference_notes}'")
+        print(f"[Tool] issue_stock: product_id='{product_id}', quantity={quantity}, partner='{partner}', reference_notes='{reference_notes}'")
         await db.issue_stock(product_id, quantity, partner, reference_notes, note, idempotency_key)
-        print(f"   ↳ Xuất kho thành công cho product_id='{product_id}'")
         return "Stock issued successfully"
