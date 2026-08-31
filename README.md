@@ -108,11 +108,13 @@ pip install -r requirements.txt
 python scripts/seed_products.py
 ```
 
-### 3. Khởi chạy Server
+### 3. Khởi chạy & Truy cập hệ thống
 ```bash
-python -m src.chat_host.main
+docker compose up -d
 ```
-*(Swagger UI xem và test API tại: `http://localhost:8000/docs`).*
+* 🌐 **Giao diện Web Chat (Streamlit):** [http://localhost:8501](http://localhost:8501)
+* ⚡ **API Swagger Docs (FastAPI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+* 🐘 **pgAdmin Web UI:** [http://localhost:5050](http://localhost:5050) (Email: `admin@admin.com` | Pass: `admin`)
 
 ---
 
