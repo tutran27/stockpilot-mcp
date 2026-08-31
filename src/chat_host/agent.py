@@ -18,6 +18,17 @@ async def run_agent(user_message: str, chat_history: list[dict] | None = None) -
     3. Tự động thực thi tool khi LLM yêu cầu và tổng hợp câu trả lời cuối cùng.
     """
     async with Client(mcp) as client:
+        # Xử lý Slash Commands để nạp MCP Prompts tự động
+        trimmed_msg = user_message.strip()
+        if trimmed_msg.startswith("/audit"):
+            prompt_res = await client.get_prompt("daily_audit_prompt")
+            user_message = prompt_res.messages[0].content.text
+        elif trimmed_msg.startswith("/restock"):
+            parts = trimmed_msg.split(maxsplit=1)
+            supplier = parts[1].strip() if len(parts) > 1 else "Dell"
+            prompt_res = await client.get_prompt("restock_plan_prompt", arguments={"supplier_name": supplier})
+            user_message = prompt_res.messages[0].content.text
+
         mcp_tools = await client.list_tools()
         openai_tools = [
             {

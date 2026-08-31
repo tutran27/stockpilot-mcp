@@ -12,14 +12,14 @@ st.set_page_config(
 )
 
 st.title("📦 StockPilot — AI Inventory Assistant (MCP)")
-st.caption("Trợ lý kho thông minh sử dụng Model Context Protocol & Human-in-the-loop")
+st.caption("Trợ lý kho thông minh tích hợp Model Context Protocol (Tools, Resources & Prompts)")
 
 # Khởi tạo session state
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "Xin chào! Tôi là **StockPilot**, trợ lý quản lý kho hàng của bạn. Bạn muốn tra cứu sản phẩm, kiểm tra tồn kho hay thực hiện thao tác nhập/xuất hàng?",
+            "content": "Xin chào! Tôi là **StockPilot**, trợ lý kho ứng dụng chuẩn MCP. Bạn có thể hỏi tự nhiên, dùng các lệnh `/audit`, `/restock <NCC>`, hoặc chọn kịch bản ở thanh bên trái.",
         }
     ]
 
@@ -38,7 +38,42 @@ with st.sidebar:
         st.error(f"🔴 Không thể kết nối Backend API: {API_URL}")
 
     st.markdown("---")
-    st.subheader("💡 Câu hỏi mẫu (Quick Queries)")
+    st.subheader("📝 MCP Prompts (Kịch bản mẫu)")
+    
+    if st.button("📊 Kích hoạt: /audit (Kiểm toán cuối ngày)", use_container_width=True):
+        st.session_state.user_query = "/audit"
+
+    supplier_input = st.text_input("Tên NCC/Hãng:", value="Dell", key="supplier_input")
+    if st.button(f"📦 Kế hoạch đặt hàng: /restock {supplier_input}", use_container_width=True):
+        st.session_state.user_query = f"/restock {supplier_input}"
+
+    st.markdown("---")
+    st.subheader("📖 MCP Resources (Tài nguyên tĩnh/động)")
+
+    with st.expander("📊 Báo cáo kho Realtime (`stock://summary/realtime`)"):
+        if st.button("Đọc dữ liệu Realtime", key="read_summary_btn", use_container_width=True):
+            try:
+                res = httpx.get(f"{API_URL}/api/resources/read", params={"uri": "stock://summary/realtime"}, timeout=5.0)
+                if res.status_code == 200:
+                    st.markdown(res.json().get("content", ""))
+                else:
+                    st.error("Không thể đọc resource.")
+            except Exception as e:
+                st.error(f"Lỗi: {e}")
+
+    with st.expander("📋 Quy chuẩn kho (`stock://policy/safety`)"):
+        if st.button("Đọc quy chuẩn an toàn", key="read_policy_btn", use_container_width=True):
+            try:
+                res = httpx.get(f"{API_URL}/api/resources/read", params={"uri": "stock://policy/safety"}, timeout=5.0)
+                if res.status_code == 200:
+                    st.markdown(res.json().get("content", ""))
+                else:
+                    st.error("Không thể đọc resource.")
+            except Exception as e:
+                st.error(f"Lỗi: {e}")
+
+    st.markdown("---")
+    st.subheader("💡 Câu hỏi mẫu")
     quick_queries = [
         "Trong kho hiện có những mặt hàng nào của Dell?",
         "Kiểm tra xem có mặt hàng nào đang sắp hết không?",
@@ -68,12 +103,12 @@ def send_chat_message(message_text: str):
         st.markdown(message_text)
 
     with st.chat_message("assistant"):
-        with st.spinner("🤖 Agent đang suy nghĩ và gọi công cụ MCP..."):
+        with st.spinner("🤖 Agent đang xử lý qua MCP Protocol..."):
             try:
                 response = httpx.post(
                     f"{API_URL}/api/chat",
                     json={"message": message_text},
-                    timeout=30.0,
+                    timeout=35.0,
                 )
                 if response.status_code == 200:
                     reply = response.json().get("response", "Không có phản hồi.")
@@ -135,7 +170,7 @@ for idx, msg in enumerate(st.session_state.messages):
 
 
 # Xử lý input từ người dùng
-user_input = st.chat_input("Nhập yêu cầu tra cứu, nhập kho, xuất kho...")
+user_input = st.chat_input("Nhập yêu cầu, hoặc gõ /audit, /restock <Tên NCC>...")
 
 if "user_query" in st.session_state and st.session_state.user_query:
     query = st.session_state.user_query

@@ -90,6 +90,54 @@ async def cancel_endpoint(req: ConfirmRequest):
     return result
 
 
+@app.get("/api/resources")
+async def list_resources_endpoint():
+    """Lấy danh sách các MCP Resources có sẵn."""
+    from mcp import Client
+    async with Client(mcp) as client:
+        res = await client.list_resources()
+        return [
+            {
+                "uri": str(r.uri),
+                "name": r.name or str(r.uri),
+                "description": r.description or "",
+            }
+            for r in res.resources
+        ]
+
+
+@app.get("/api/resources/read")
+async def read_resource_endpoint(uri: str):
+    """Đọc nội dung một MCP Resource theo URI."""
+    from mcp import Client
+    async with Client(mcp) as client:
+        try:
+            res = await client.read_resource(uri)
+            content = res.contents[0].text if res.contents else ""
+            return {"uri": uri, "content": content}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/prompts")
+async def list_prompts_endpoint():
+    """Lấy danh sách các MCP Prompts có sẵn."""
+    from mcp import Client
+    async with Client(mcp) as client:
+        res = await client.list_prompts()
+        return [
+            {
+                "name": p.name,
+                "description": p.description or "",
+                "arguments": [
+                    {"name": a.name, "description": a.description or "", "required": a.required}
+                    for a in (p.arguments or [])
+                ],
+            }
+            for p in res.prompts
+        ]
+
+
 if __name__ == "__main__":
     import uvicorn
 
