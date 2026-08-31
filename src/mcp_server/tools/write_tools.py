@@ -18,15 +18,6 @@ def register_write_tools(mcp):
         return await db.add_product(sku, name, unit, current_quantity, minimum_quantity)
 
     @mcp.tool()
-    async def update_stock(
-        product_id: Annotated[str, Field(description="Product ID to update stock for")],
-        quantity_delta: Annotated[int, Field(description="Quantity to add (positive) or subtract (negative)")]
-    ) -> str:
-        """Update stock quantity directly for a specific product"""
-        await db.update_stock(product_id, quantity_delta)
-        return "Stock updated successfully"
-
-    @mcp.tool()
     async def receive_stock(
         product_id: Annotated[str, Field(description="Product ID to receive stock for")],
         quantity: Annotated[int, Field(gt=0, description="Quantity to receive (must be > 0)")],

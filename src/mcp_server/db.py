@@ -1,4 +1,5 @@
 import os
+import uuid
 import asyncpg
 from dotenv import load_dotenv
 
@@ -136,22 +137,6 @@ async def add_product(sku: str, name: str, unit: str, current_quantity: int = 0,
         minimum_quantity,
     )
     return dict(row) if row else None
-
-
-import uuid
-
-
-async def update_stock(product_id: str, quantity_delta: int) -> None:
-    """Cập nhật tăng/giảm số lượng tồn kho của một sản phẩm."""
-    await get_pool().execute(
-        """
-        UPDATE products 
-        SET current_quantity = current_quantity + $2, updated_at = NOW() 
-        WHERE id = $1::uuid;
-        """,
-        product_id,
-        quantity_delta,
-    )
 
 
 async def create_transaction(
