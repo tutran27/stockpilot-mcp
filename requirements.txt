@@ -1,0 +1,7 @@
+mcp[cli]>=2,<3
+fastapi
+uvicorn
+asyncpg
+python-dotenv
+pydantic
+openai
