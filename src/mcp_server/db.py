@@ -1,5 +1,7 @@
 import os
 import uuid
+import json
+import asyncio
 import asyncpg
 from dotenv import load_dotenv
 
@@ -19,19 +21,23 @@ pool: asyncpg.Pool | None = None
 
 async def init_db() -> None:
     global pool
-    if pool is None:
+    if pool is None or getattr(pool, "_closed", False):
         pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
 
 
 async def close_db() -> None:
     global pool
     if pool is not None:
-        await pool.close()
+        try:
+            await pool.close()
+        except Exception:
+            pass
         pool = None
 
 
 def get_pool() -> asyncpg.Pool:
-    if pool is None:
+    global pool
+    if pool is None or getattr(pool, "_closed", False):
         raise RuntimeError("Database pool chưa được khởi tạo. Hãy gọi init_db() trước.")
     return pool
 
@@ -277,3 +283,155 @@ async def issue_stock(
                 note or None,
                 key,
             )
+
+
+# ==============================================================================
+# 4. QUẢN LÝ PHIÊN CHAT & BỘ NHỚ STATE (Session & Working State Memory)
+# ==============================================================================
+
+async def get_or_create_session(session_id: str) -> dict:
+    """Lấy thông tin phiên chat kèm working_context hoặc tạo mới nếu chưa tồn tại."""
+    pool = get_pool()
+    row = await pool.fetchrow(
+        "SELECT id, working_context, created_at FROM chat_sessions WHERE id = $1;",
+        session_id,
+    )
+    if not row:
+        row = await pool.fetchrow(
+            """
+            INSERT INTO chat_sessions (id, working_context)
+            VALUES ($1, '{}'::jsonb)
+            RETURNING id, working_context, created_at;
+            """,
+            session_id,
+        )
+    data = dict(row)
+    if isinstance(data.get("working_context"), str):
+        try:
+            data["working_context"] = json.loads(data["working_context"])
+        except Exception:
+            data["working_context"] = {}
+    elif data.get("working_context") is None:
+        data["working_context"] = {}
+    return data
+
+
+async def update_session_working_context(session_id: str, working_context: dict) -> None:
+    """Cập nhật working_context (JSONB) cho một session."""
+    await get_pool().execute(
+        """
+        INSERT INTO chat_sessions (id, working_context, created_at)
+        VALUES ($1, $2::jsonb, NOW())
+        ON CONFLICT (id) DO UPDATE
+        SET working_context = $2::jsonb;
+        """,
+        session_id,
+        json.dumps(working_context),
+    )
+
+
+async def get_recent_messages(session_id: str, limit: int = 6) -> list[dict]:
+    """Lấy N tin nhắn gần nhất của session theo thứ tự thời gian tăng dần."""
+    rows = await get_pool().fetch(
+        """
+        SELECT role, content
+        FROM (
+            SELECT role, content, created_at
+            FROM chat_messages
+            WHERE session_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+        ) sub
+        ORDER BY created_at ASC;
+        """,
+        session_id,
+        limit,
+    )
+    return [dict(r) for r in rows]
+
+
+async def save_message(session_id: str, role: str, content: str) -> None:
+    """Lưu một tin nhắn mới vào lịch sử session."""
+    await get_or_create_session(session_id)
+    await get_pool().execute(
+        """
+        INSERT INTO chat_messages (session_id, role, content)
+        VALUES ($1, $2, $3);
+        """,
+        session_id,
+        role,
+        content,
+    )
+
+
+async def clear_session_history(session_id: str) -> None:
+    """Xóa toàn bộ tin nhắn và reset working_context của một session."""
+    async with get_pool().acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("DELETE FROM chat_messages WHERE session_id = $1;", session_id)
+            await conn.execute("DELETE FROM chat_sessions WHERE id = $1;", session_id)
+
+
+async def list_chat_sessions(limit: int = 20) -> list[dict]:
+    """Lấy danh sách các session kèm câu hỏi đầu tiên và số lượng tin nhắn."""
+    rows = await get_pool().fetch(
+        """
+        SELECT 
+            s.id,
+            s.created_at,
+            s.working_context,
+            COALESCE(
+                (
+                    SELECT content 
+                    FROM chat_messages m 
+                    WHERE m.session_id = s.id AND m.role = 'user' 
+                    ORDER BY m.created_at ASC 
+                    LIMIT 1
+                ),
+                'Cuộc trò chuyện mới'
+            ) as title,
+            (
+                SELECT COUNT(*) 
+                FROM chat_messages m 
+                WHERE m.session_id = s.id
+            ) as message_count
+        FROM chat_sessions s
+        ORDER BY s.created_at DESC
+        LIMIT $1;
+        """,
+        limit,
+    )
+    result = []
+    for r in rows:
+        item = dict(r)
+        if item.get("created_at"):
+            item["created_at"] = item["created_at"].isoformat()
+        if isinstance(item.get("working_context"), str):
+            try:
+                item["working_context"] = json.loads(item["working_context"])
+            except Exception:
+                item["working_context"] = {}
+        elif item.get("working_context") is None:
+            item["working_context"] = {}
+        result.append(item)
+    return result
+
+
+async def get_session_messages(session_id: str) -> list[dict]:
+    """Lấy toàn bộ tin nhắn của một session theo thứ tự thời gian tăng dần."""
+    rows = await get_pool().fetch(
+        """
+        SELECT role, content, created_at
+        FROM chat_messages
+        WHERE session_id = $1
+        ORDER BY created_at ASC;
+        """,
+        session_id,
+    )
+    result = []
+    for r in rows:
+        item = dict(r)
+        if item.get("created_at"):
+            item["created_at"] = item["created_at"].isoformat()
+        result.append(item)
+    return result

@@ -50,8 +50,26 @@ CREATE TABLE IF NOT EXISTS tool_audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 5. Bảng quản lý phiên chat
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id VARCHAR(255) PRIMARY KEY,
+    working_context JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL, 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+);
+
 -- Indexes tối ưu hiệu năng truy vấn
 CREATE INDEX IF NOT EXISTS idx_stock_transactions_product_id ON stock_transactions(product_id);
 CREATE INDEX IF NOT EXISTS idx_pending_actions_session_status ON pending_actions(session_id, status);
 CREATE INDEX IF NOT EXISTS idx_tool_audit_logs_tool_name ON tool_audit_logs(tool_name);
 CREATE INDEX IF NOT EXISTS idx_tool_audit_logs_created_at ON tool_audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created ON chat_messages(session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_at ON chat_sessions(created_at DESC); 

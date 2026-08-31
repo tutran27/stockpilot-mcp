@@ -64,14 +64,41 @@ async def chat_endpoint(req: ChatRequest):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Tin nhắn không được để trống.")
 
+    session_id = req.session_id or "default"
     try:
-        agent_reply = await run_agent(user_message=req.message)
+        agent_reply = await run_agent(user_message=req.message, session_id=session_id)
         return ChatResponse(
             response=agent_reply,
-            session_id=req.session_id,
+            session_id=session_id,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chat/sessions")
+async def list_sessions_endpoint(limit: int = 20):
+    """Lấy danh sách các phiên trò chuyện gần đây."""
+    sessions = await db.list_chat_sessions(limit=limit)
+    return {"sessions": sessions}
+
+
+@app.get("/api/chat/session/{session_id}")
+async def get_session_endpoint(session_id: str):
+    """Lấy thông tin working_context và toàn bộ tin nhắn của session."""
+    session = await db.get_or_create_session(session_id)
+    messages = await db.get_session_messages(session_id)
+    return {
+        "session_id": session_id,
+        "working_context": session.get("working_context", {}),
+        "messages": messages,
+    }
+
+
+@app.delete("/api/chat/session/{session_id}")
+async def clear_session_endpoint(session_id: str):
+    """Xóa hoàn toàn một phiên chat khỏi Database."""
+    await db.clear_session_history(session_id)
+    return {"status": "ok", "message": f"Đã xóa session {session_id}"}
 
 
 @app.post("/api/chat/confirm")
