@@ -1,147 +1,166 @@
-# 📦 StockPilot — AI-Powered Inventory Assistant with MCP
+# 📦 StockPilot — AI-Powered Inventory Assistant with Model Context Protocol (MCP)
 
 <p align="center">
   <img src="https://img.shields.io/badge/Author-TuTran27-blue?style=for-the-badge&logo=github" alt="Author" />
+  <img src="https://img.shields.io/badge/Live_Demo-Streamlit_App-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo" />
+  <img src="https://img.shields.io/badge/Backend-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white" alt="Railway" />
+  <img src="https://img.shields.io/badge/Database-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/MCP-Protocol-8A2BE2?style=for-the-badge" alt="MCP" />
-  <img src="https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
 </p>
 
 <p align="center">
-  <b>Trợ lý Quản lý Kho thông minh ứng dụng Model Context Protocol (MCP) & ReAct AI Agent với cơ chế Human-in-the-loop.</b>
+  <b>Trợ lý Quản lý Kho thông minh ứng dụng Model Context Protocol (MCP) & ReAct AI Agent với cơ chế Human-in-the-loop và Bộ nhớ Ngữ cảnh Đa Phiên (Hybrid Working State).</b>
 </p>
 
 ---
 
-## 🎯 Mục đích dự án
+## 🌐 Live Demo & Trải nghiệm Trực tuyến
 
-**StockPilot** là dự án cá nhân thực hành và đào sâu chuẩn giao thức **Model Context Protocol (MCP)** của Anthropic thông qua bài toán thực tế: **Quản lý kho hàng thông minh (Inventory Management)**.
-
-### 🔑 Điểm nhấn kỹ thuật:
-- **Chuẩn MCP:** Tách biệt rõ ràng giữa **Chat Host**, **Client**, và **FastMCP Server**.
-- **Human-in-the-loop (HITL):** Tự động phát hiện và yêu cầu người dùng xác nhận (`PENDING` $\rightarrow$ `CONFIRMED`) trước khi thực thi các thao tác nhạy cảm (nhập, xuất kho, tạo sản phẩm).
-- **ACID & Idempotency:** Thao tác Database an toàn qua `asyncpg` connection pool và chống trùng lặp giao dịch.
-- **Docker Compose:** Khởi chạy đồng bộ FastAPI, PostgreSQL 17 và pgAdmin chỉ với 1 lệnh.
+* 🚀 **Giao diện Web Chat (Streamlit):** [https://tutran27-stockpilot-mcp.streamlit.app/](https://tutran27-stockpilot-mcp.streamlit.app/)
+* ⚡ **Backend API & Swagger Docs (Railway):** [https://stockpilot-mcp-production.up.railway.app/docs](https://stockpilot-mcp-production.up.railway.app/docs)
+* 🐘 **Database:** Managed PostgreSQL 17 trên **Supabase Cloud** (Transaction Pooler - PgBouncer).
 
 ---
 
-## 🏗️ Kiến trúc hệ thống
+## 🎯 Điểm nổi bật & Tính năng cốt lõi
+
+1. **Chuẩn Model Context Protocol (MCP):**
+   * **Tools:** Đầy đủ công cụ Đọc (`find_products`, `get_stock`, `get_low_stock_products`) và Ghi (`receive_stock`, `issue_stock`, `add_product`).
+   * **Resources:** Tài nguyên dữ liệu động (`stock://summary/realtime`) và tĩnh (`stock://policy/safety`).
+   * **Prompts:** Kịch bản mẫu tích hợp sẵn (`/audit` - Kiểm toán cuối ngày, `/restock <NCC>` - Kế hoạch đặt hàng).
+
+2. **Cơ chế Human-in-the-loop (HITL) An toàn:**
+   * Tự động phát hiện và chặn các thao tác nhạy cảm (nhập kho, xuất kho, thêm sản phẩm).
+   * Tạo mã hành động tạm thời (`PENDING`), sinh nút bấm trực quan trên Web để người dùng duyệt (`CONFIRMED`) hoặc từ chối (`CANCELLED`).
+
+3. **Bộ nhớ Ngữ cảnh Đa Phiên (Hybrid Working State & Multi-Session):**
+   * Tự động trích xuất và ghi nhớ thực thể (Mã sản phẩm, Tên NCC, Số Hóa đơn) theo dạng bảng quy tắc ánh xạ (*Declarative Field Mapping*).
+   * Hỗ trợ tạo nhiều phiên trò chuyện (**New Conversation**), chuyển đổi linh hoạt giữa các phiên cũ và xem trực quan State theo thời gian thực.
+
+4. **Kiến trúc ACID & Chống Trùng lặp (Idempotency):**
+   * Sử dụng `idempotency_key` và cơ chế khóa dòng giao dịch (`transaction`) chống nhập/xuất kho trùng lặp.
+
+---
+
+## 🛠️ Công nghệ sử dụng (Tech Stack)
+
+| Thành phần | Công nghệ / Thư viện | Vai trò |
+| :--- | :--- | :--- |
+| **Giao thức MCP** | `mcp` (Anthropic Python SDK) | Tách biệt chuẩn hóa giữa Chat Host Client và FastMCP Server. |
+| **LLM & Agent** | Groq Cloud (`openai/gpt-oss-20b`), OpenAI SDK | Điều phối vòng lặp ReAct, phân tích câu hỏi tự nhiên và tự động gọi Tool. |
+| **Backend API** | FastAPI, Uvicorn (Multi-workers), Pydantic v2 | Cung cấp RESTful API, quản lý xác nhận HITL và điều phối phiên chat. |
+| **Frontend Web** | Streamlit | Giao diện Chat tương tác thời gian thực, quản lý đa phiên và nút bấm HITL. |
+| **Database Layer** | PostgreSQL 17, `asyncpg` (Connection Pooling) | Lưu trữ danh mục kho, nhật ký giao dịch, kiểm toán và lịch sử phiên. |
+| **Cloud Hosting** | **Railway.app** (Backend API), **Streamlit Cloud** (Web UI) | Triển khai container hóa liên tục (CI/CD từ GitHub). |
+| **Cloud Database** | **Supabase** (PostgreSQL + PgBouncer) | Cơ sở dữ liệu Cloud với khả năng chịu tải hàng nghìn kết nối đồng thời. |
+| **Containerization** | Docker, Docker Compose | Đóng gói môi trường đồng nhất giữa Local và Production. |
+
+---
+
+## 🏗️ Kiến trúc luồng xử lý hệ thống
 
 ```mermaid
 flowchart TD
-    User([👤 Người dùng]) <-->|REST API / Chat| Host[🌐 Chat Host / FastAPI]
-    
-    subgraph ChatHostApp ["Chat Host (Orchestrator)"]
+    subgraph ClientLayer ["1. Lớp Giao diện & Người dùng"]
+        User([👤 Người dùng]) <-->|Web UI| Streamlit["💻 Streamlit Web App (tutran27-stockpilot-mcp)"]
+    end
+
+    subgraph HostLayer ["2. Lớp Điều phối (Chat Host / FastAPI)"]
+        Streamlit <-->|REST API / JSON| Host["🌐 FastAPI Host (Railway)"]
         Host <--> Agent["🤖 ReAct Agent Loop"]
         Agent <--> LLM["🧠 LLM (Groq / OpenAI)"]
+        Agent <--> Memory["🧠 Working State & Session Memory"]
         Agent <--> HITL["🛡️ Human-in-the-loop Gate"]
         Agent <--> MCPClient["🔌 MCP Client"]
     end
 
-    subgraph MCPServerApp ["MCP Server (StockPilot)"]
+    subgraph ServerLayer ["3. Lớp Giao thức MCP (FastMCP Server)"]
         MCPClient <==>|MCP Protocol| MCPServer["⚙️ FastMCP Server"]
         MCPServer --> ReadTools["📖 Read Tools (find, get_stock, alert)"]
         MCPServer --> WriteTools["✍️ Write Tools (receive, issue, add)"]
-        ReadTools & WriteTools --> DBModule["💾 DB Layer (asyncpg)"]
+        MCPServer --> Resources["📊 Resources (summary, policy)"]
+        MCPServer --> Prompts["📝 Prompts (audit, restock)"]
     end
 
-    DBModule <==>|Connection Pool| Postgres[(🐘 PostgreSQL)]
+    subgraph DBLayer ["4. Lớp Dữ liệu (Supabase Cloud Database)"]
+        ReadTools & WriteTools & Memory --> DBModule["💾 asyncpg Pool (statement_cache_size=0)"]
+        DBModule <==>|PgBouncer Pooler| Postgres[(🐘 Supabase PostgreSQL 17)]
+    end
 ```
 
 ---
 
-## 🛠️ Danh mục MCP Tools
-
-| Tool | Loại | Tham số chính | Mô tả |
-| :--- | :---: | :--- | :--- |
-| `find_products` | 📖 Read | `name_or_sku` | Tìm kiếm sản phẩm theo tên hoặc SKU (mờ `ILIKE`). |
-| `get_stock` | 📖 Read | `product_id` | Lấy chi tiết tồn kho theo ID sản phẩm. |
-| `get_low_stock_products` | 📖 Read | `limit=10` | Cảnh báo danh sách sản phẩm sắp hết hàng. |
-| `get_transactions_limit` | 📖 Read | `limit=10` | Lấy lịch sử biến động kho gần nhất. |
-| `add_product` | ✍️ Write | `sku, name, unit, ...` | ⚠️ Thêm mặt hàng mới vào danh mục (*cần xác nhận*). |
-| `receive_stock` | ✍️ Write | `product_id, quantity, partner` | ⚠️ Nhập kho và lưu log giao dịch (*cần xác nhận*). |
-| `issue_stock` | ✍️ Write | `product_id, quantity, partner` | ⚠️ Xuất kho sau khi kiểm tra số lượng tồn (*cần xác nhận*). |
-
----
-
-## 📁 Cấu trúc thư mục
+## 📁 Cấu trúc thư mục dự án
 
 ```text
 stockpilot/
-├── 📄 compose.yaml             # Docker Compose cho PostgreSQL & pgAdmin
-├── 📄 Dockerfile               # Dockerfile cho Chat Host
-├── 📄 requirements.txt         # Dependencies
-├── 📄 .env.example             # Mẫu cấu hình biến môi trường
-├── 📁 db/init.sql              # Schema Database & Index
-├── 📁 scripts/seed_products.py # Nạp dữ liệu mẫu
+├── 📄 compose.yaml             # Cấu hình Docker Compose chuẩn Production
+├── 📄 Dockerfile               # Đóng gói Chat Host & MCP Server
+├── 📄 requirements.txt         # Danh mục thư viện phụ thuộc
+├── 📄 .env.example             # File mẫu biến môi trường
+├── 📁 db/
+│   └── 📄 init.sql             # Khởi tạo Schema DB, Indexes và ràng buộc FK
+├── 📁 scripts/
+│   └── 📄 seed_products.py     # Nạp dữ liệu sản phẩm mẫu
 ├── 📁 src/
-│   ├── 📁 mcp_server/          # FastMCP Server, Database & Tools
-│   └── 📁 chat_host/           # FastAPI Host, ReAct Agent & HITL Confirmation
-└── 📁 tests/                   # Test suite (Unit, Integration)
+│   ├── 📁 chat_host/           # Chat Host Orchestrator
+│   │   ├── 📄 main.py          # FastAPI Endpoints (/api/chat, /confirm, /cancel)
+│   │   ├── 📄 agent.py         # Vòng lặp Agent ReAct & MCP Tool Routing
+│   │   ├── 📄 memory.py        # Bộ nhớ Working State & Ánh xạ thực thể
+│   │   ├── 📄 confirmation.py  # Xử lý Human-in-the-loop (Pending Actions)
+│   │   ├── 📄 llm.py           # Kết nối AsyncOpenAI / Groq LLM
+│   │   └── 📄 prompts.py       # System Prompts & Working State Injection
+│   ├── 📁 mcp_server/          # MCP Server Layer
+│   │   ├── 📄 server.py        # Định nghĩa FastMCP Server & Đăng ký Tool/Resource/Prompt
+│   │   ├── 📄 db.py            # Thao tác PostgreSQL (asyncpg connection pool)
+│   │   ├── 📄 tools_read.py    # MCP Read Tools
+│   │   ├── 📄 tools_write.py   # MCP Write Tools
+│   │   ├── 📄 resources.py     # MCP Resources
+│   │   └── 📄 prompts.py       # MCP Prompts Templates
+│   └── 📁 ui/
+│       └── 📄 app.py           # Giao diện Web Chat Streamlit
 ```
 
 ---
 
-## 🚦 Hướng dẫn cài đặt & Chạy nhanh
+## 🚦 Hướng dẫn Khởi chạy Môi trường Local (Self-Hosted)
 
-### 1. Chuẩn bị môi trường & Database
+### 1. Kéo mã nguồn & Cài đặt môi trường
 ```bash
-# Clone repo & cấu hình .env
 git clone https://github.com/tutran27/stockpilot-mcp.git
 cd stockpilot-mcp
-cp .env.example .env   # Điền GROQ_API_KEY hoặc OPENAI_API_KEY
-
-# Khởi động PostgreSQL qua Docker
-docker compose up -d
+cp .env.example .env
 ```
-*(pgAdmin xem DB tại `http://localhost:5050` — `admin@admin.com` / `admin`).*
+*(Mở file `.env` và điền `GROQ_API_KEY` hoặc `OPENAI_API_KEY`, cùng chuỗi kết nối Database).*
 
-### 2. Cài đặt thư viện & Nạp dữ liệu mẫu
+### 2. Khởi chạy trọn gói bằng Docker Compose
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# Nạp dữ liệu sản phẩm mẫu vào DB
-python scripts/seed_products.py
+docker compose up -d --build
 ```
 
-### 3. Khởi chạy & Truy cập hệ thống
-```bash
-docker compose up -d
-```
+### 3. Truy cập các cổng dịch vụ Local:
 * 🌐 **Giao diện Web Chat (Streamlit):** [http://localhost:8501](http://localhost:8501)
 * ⚡ **API Swagger Docs (FastAPI):** [http://localhost:8000/docs](http://localhost:8000/docs)
-* 🐘 **pgAdmin Web UI:** [http://localhost:5050](http://localhost:5050) (Email: `admin@admin.com` | Pass: `admin`)
+* 🐘 **pgAdmin Quản trị DB:** [http://localhost:5050](http://localhost:5050) *(Email: `admin@admin.com` | Pass: `admin`)*
 
 ---
 
-## 🧪 Luồng trải nghiệm Human-in-the-loop
+## 🧪 Kịch bản Trải nghiệm Mẫu (Demo Flows)
 
-### Bước 1: Gửi yêu cầu nhập hàng qua `POST /api/chat`
-```json
-{
-  "message": "Tôi muốn nhập 10 cái Laptop Dell XPS 13 từ NCC FPT, số HĐ: FPT-1234."
-}
-```
-👉 **Agent phản hồi và sinh mã xác nhận:**
-```text
-⚠️ Thao tác `receive_stock` cần bạn xác nhận trước khi thực hiện.
-Mã hành động: `e70ce90c-575f-4462-81ae-672a29b26fdc`
-Chi tiết: {'product_id': '...', 'quantity': 10, 'partner': 'FPT'}
-```
+### Kịch bản 1: Ghi nhớ Ngữ cảnh Thông minh (Working State)
+1. **Người dùng:** *"Kiểm tra mặt hàng Dell XPS 13"*
+   * 🤖 **AI:** Tra cứu và báo tồn kho hiện có 15 chiếc (ID: `bf9ddbda-...`).
+2. **Người dùng:** *"Nhập thêm 10 cái từ NCC FPT, số HĐ: FPT-8899"*
+   * 🤖 **AI:** Tự động nhận diện sản phẩm đang nói đến là *Dell XPS 13*, nạp mã hóa đơn `FPT-8899`, nhà cung cấp `FPT` và tạo yêu cầu xác nhận `receive_stock`.
 
-### Bước 2: Xác nhận thực thi qua `POST /api/chat/confirm`
-```json
-{
-  "action_id": "e70ce90c-575f-4462-81ae-672a29b26fdc"
-}
-```
-✅ **Thao tác được chuyển trạng thái `CONFIRMED` và ghi nhận thành công vào Database!**
+### Kịch bản 2: Duyệt hành động nhạy cảm (Human-in-the-loop)
+* Khi AI yêu cầu xác nhận, giao diện Web sẽ hiển thị thẻ chi tiết kèm 2 nút bấm:
+  * 🟢 **Xác nhận thực hiện:** Gọi `POST /api/chat/confirm`, cập nhật tồn kho tức thì và khóa nút.
+  * 🔴 **Hủy bỏ:** Hủy bỏ thao tác an toàn.
 
 ---
 
 ## 📄 License
-Phân phối dưới giấy phép **MIT License**.
+Dự án được phân phối dưới giấy phép **MIT License**.
