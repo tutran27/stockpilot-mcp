@@ -5,15 +5,21 @@ from openai import AsyncOpenAI
 load_dotenv()
 
 # Lấy cấu hình từ biến môi trường
-GROQ_API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 DEFAULT_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
 
-# Khởi tạo Async Client cho FastAPI/Chat Host
-client = AsyncOpenAI(
-    api_key=GROQ_API_KEY,
-    base_url=GROQ_BASE_URL,
-)
+
+def get_client() -> AsyncOpenAI:
+    """Khởi tạo hoặc lấy OpenAI Client với API key từ biến môi trường."""
+    api_key = os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "❌ Thiếu API Key! Hãy cấu hình biến môi trường GROQ_API_KEY (hoặc OPENAI_API_KEY) trong tab Variables trên Railway."
+        )
+    return AsyncOpenAI(
+        api_key=api_key,
+        base_url=GROQ_BASE_URL,
+    )
 
 
 async def call_llm(
@@ -25,6 +31,7 @@ async def call_llm(
     """
     Gửi prompt và danh sách tools sang Groq LLM (OpenAI-compatible).
     """
+    client = get_client()
     kwargs = {
         "model": model,
         "messages": messages,
