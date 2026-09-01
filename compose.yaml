@@ -1,74 +1,94 @@
 services:
+  # 1. Cơ sở dữ liệu PostgreSQL
   postgres:
     image: postgres:17-alpine
     container_name: stockpilot-db
     restart: unless-stopped
-
     environment:
-      POSTGRES_DB: stockpilot
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-
+      POSTGRES_DB: ${POSTGRES_DB:-stockpilot}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    # Chỉ mở port nội bộ 127.0.0.1 để bảo mật, tránh rò rỉ DB ra internet
     ports:
-      - "5432:5432"
-
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U postgres -d stockpilot"
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-stockpilot}"]
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - stockpilot-net
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: stockpilot-pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
+  # 2. FastAPI Backend & MCP Host
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: stockpilot-api
-    command: uvicorn src.chat_host.main:app --host 0.0.0.0 --port 8000 --reload
+    # Production: Bỏ cờ --reload, chạy multi-workers để tăng hiệu năng xử lý
+    command: uvicorn src.chat_host.main:app --host 0.0.0.0 --port 8000 --workers 2
     restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/stockpilot
-    volumes:
-      - .:/app
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-stockpilot}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - stockpilot-net
 
+  # 3. Streamlit Web UI
   ui:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: stockpilot-ui
-    command: streamlit run src/ui/app.py --server.port=8501 --server.address=0.0.0.0
+    # Production: Chạy ở chế độ headless, tắt thu thập thống kê
+    command: streamlit run src/ui/app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false
     restart: unless-stopped
     ports:
       - "8501:8501"
-    volumes:
-      - .:/app
     environment:
       - API_URL=http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    networks:
+      - stockpilot-net
+
+  # 4. pgAdmin (Tùy chọn: Dùng profile 'tools' để không tự chạy ở Prod nhằm tiết kiệm RAM)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: stockpilot-pgadmin
+    restart: unless-stopped
+    profiles:
+      - tools
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@stockpilot.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - stockpilot-net
 
 volumes:
   postgres_data:
+
+networks:
+  stockpilot-net:
+    driver: bridge
