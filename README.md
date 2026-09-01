@@ -26,36 +26,22 @@
 
 ## 🎯 Điểm nổi bật & Tính năng cốt lõi
 
-1. **Chuẩn Model Context Protocol (MCP):**
-   * **Tools:** Đầy đủ công cụ Đọc (`find_products`, `get_stock`, `get_low_stock_products`) và Ghi (`receive_stock`, `issue_stock`, `add_product`).
-   * **Resources:** Tài nguyên dữ liệu động (`stock://summary/realtime`) và tĩnh (`stock://policy/safety`).
-   * **Prompts:** Kịch bản mẫu tích hợp sẵn (`/audit` - Kiểm toán cuối ngày, `/restock <NCC>` - Kế hoạch đặt hàng).
-
-2. **Cơ chế Human-in-the-loop (HITL) An toàn:**
-   * Tự động phát hiện và chặn các thao tác nhạy cảm (nhập kho, xuất kho, thêm sản phẩm).
-   * Tạo mã hành động tạm thời (`PENDING`), sinh nút bấm trực quan trên Web để người dùng duyệt (`CONFIRMED`) hoặc từ chối (`CANCELLED`).
-
-3. **Bộ nhớ Ngữ cảnh Đa Phiên (Hybrid Working State & Multi-Session):**
-   * Tự động trích xuất và ghi nhớ thực thể (Mã sản phẩm, Tên NCC, Số Hóa đơn) theo dạng bảng quy tắc ánh xạ (*Declarative Field Mapping*).
-   * Hỗ trợ tạo nhiều phiên trò chuyện (**New Conversation**), chuyển đổi linh hoạt giữa các phiên cũ và xem trực quan State theo thời gian thực.
-
-4. **Kiến trúc ACID & Chống Trùng lặp (Idempotency):**
-   * Sử dụng `idempotency_key` và cơ chế khóa dòng giao dịch (`transaction`) chống nhập/xuất kho trùng lặp.
+- 🔌 **Chuẩn MCP Toàn diện:** Hỗ trợ đầy đủ **Tools** (tra cứu/nhập/xuất kho), **Resources** (báo cáo realtime), và **Prompts** (`/audit`, `/restock`).
+- 🛡️ **Human-in-the-loop (HITL):** Tự động chặn và yêu cầu người dùng bấm nút duyệt (`CONFIRMED`) trước khi thực hiện thao tác nhạy cảm.
+- 🧠 **Bộ nhớ Ngữ cảnh Thông minh:** Tự động nhớ thực thể (*Working State: mã SKU, NCC, số HĐ*) và quản lý đa phiên chat (*Multi-Session*).
+- 🔒 **Giao dịch An toàn (ACID & Idempotency):** Khóa giao dịch và chống xuất/nhập kho trùng lặp dữ liệu.
 
 ---
 
-## 🛠️ Công nghệ sử dụng (Tech Stack)
+## 🛠️ Công nghệ cốt lõi (Tech Stack)
 
-| Thành phần | Công nghệ / Thư viện | Vai trò |
+| Thành phần | Công nghệ nổi bật | Điểm nhấn kỹ thuật |
 | :--- | :--- | :--- |
-| **Giao thức MCP** | `mcp` (Anthropic Python SDK) | Tách biệt chuẩn hóa giữa Chat Host Client và FastMCP Server. |
-| **LLM & Agent** | Groq Cloud (`openai/gpt-oss-20b`), OpenAI SDK | Điều phối vòng lặp ReAct, phân tích câu hỏi tự nhiên và tự động gọi Tool. |
-| **Backend API** | FastAPI, Uvicorn (Multi-workers), Pydantic v2 | Cung cấp RESTful API, quản lý xác nhận HITL và điều phối phiên chat. |
-| **Frontend Web** | Streamlit | Giao diện Chat tương tác thời gian thực, quản lý đa phiên và nút bấm HITL. |
-| **Database Layer** | PostgreSQL 17, `asyncpg` (Connection Pooling) | Lưu trữ danh mục kho, nhật ký giao dịch, kiểm toán và lịch sử phiên. |
-| **Cloud Hosting** | **Railway.app** (Backend API), **Streamlit Cloud** (Web UI) | Triển khai container hóa liên tục (CI/CD từ GitHub). |
-| **Cloud Database** | **Supabase** (PostgreSQL + PgBouncer) | Cơ sở dữ liệu Cloud với khả năng chịu tải hàng nghìn kết nối đồng thời. |
-| **Containerization** | Docker, Docker Compose | Đóng gói môi trường đồng nhất giữa Local và Production. |
+| **Giao thức MCP** | **Model Context Protocol** (`mcp` SDK) | Chuẩn hóa kết nối giữa AI Agent và FastMCP Server (Tools, Resources, Prompts). |
+| **AI Orchestration** | **ReAct Agent + Groq / OpenAI** | Phân tích ngôn ngữ tự nhiên, tự động gọi Tool và duy trì bộ nhớ ngữ cảnh (*Working State*). |
+| **Backend & API** | **FastAPI (Async Python 3.12)** | Xử lý bất đồng bộ hiệu năng cao, tích hợp cổng kiểm soát an toàn (*Human-in-the-loop*). |
+| **Database** | **PostgreSQL 17 (Supabase)** | Quản lý kho chuẩn ACID, chống trùng lặp dữ liệu (`idempotency_key`), Connection Pooling. |
+| **Frontend & Cloud** | **Streamlit + Railway** | Giao diện Web tương tác thời gian thực, triển khai container hóa tự động từ GitHub. |
 
 ---
 
