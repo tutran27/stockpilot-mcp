@@ -17,7 +17,7 @@ async def connect_db() -> None:
     global pool
     if pool is None:
         print(f"Connecting to {DATABASE_URL}")
-        pool = await asyncpg.connect(DATABASE_URL)
+        pool = await asyncpg.connect(DATABASE_URL, statement_cache_size=0)
         print("Connected to database")
 
 

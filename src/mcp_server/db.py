@@ -22,7 +22,12 @@ pool: asyncpg.Pool | None = None
 async def init_db() -> None:
     global pool
     if pool is None or getattr(pool, "_closed", False):
-        pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+        pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=2,
+            max_size=10,
+            statement_cache_size=0,
+        )
 
 
 async def close_db() -> None:
